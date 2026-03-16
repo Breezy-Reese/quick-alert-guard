@@ -22,6 +22,16 @@ export const API_ENDPOINTS = {
   HOSPITALS: '/users/hospitals',
   RESPONDERS: '/users/responders',
 
+  // Driver
+  DRIVER_STATS: '/driver/stats',
+  DRIVER_VEHICLE: '/driver/vehicle',
+  DRIVER_CONTACTS: '/driver/contacts',
+  DRIVER_CONTACT_BY_ID: (id: string) => `/driver/contacts/${id}`,
+  TRIPS: '/driver/trips',
+  TRIP_ACTIVE: '/driver/trips/active',
+  TRIP_START: '/driver/trips/start',
+  TRIP_END: (id: string) => `/driver/trips/${id}/end`,
+
   // Incidents
   INCIDENTS: '/incidents',
   ACTIVE_INCIDENTS: '/incidents/active',

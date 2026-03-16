@@ -201,6 +201,60 @@ export const acceptIncident = async (req: AuthRequest, res: Response) => {
 };
 
 /* ============================================================
+   GET INCIDENTS   GET /api/incidents
+   Add this function to incident.controller.ts
+============================================================ */
+export const getIncidents = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    const { page = 1, limit = 20, status, severity } = req.query;
+    const pageNum  = Number(page);
+    const limitNum = Number(limit);
+
+    // Build filter based on role
+    const filter: any = {};
+
+    if (status) filter.status = status;
+    if (severity) filter.severity = severity;
+
+    // Drivers only see their own incidents
+    if (user.role === 'driver') {
+      filter.driverId = user._id;
+    }
+
+    // Hospitals see incidents assigned to them
+    if (user.role === 'hospital') {
+      filter.hospitalId = user._id;
+    }
+
+    const [incidents, total] = await Promise.all([
+      Incident.find(filter)
+        .sort({ detectedAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      Incident.countDocuments(filter),
+    ]);
+
+    return res.json({
+      success: true,
+      data: incidents,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error: any) {
+    logger.error('Get incidents error:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to get incidents' });
+  }
+};
+
+/* ============================================================
    GET USER INCIDENTS
 ============================================================ */
 export const getUserIncidents = async (req: Request, res: Response) => {

@@ -87,10 +87,14 @@ export interface IncidentEvent {
 
 // ========== Emergency Types ==========
 export interface EmergencyContact {
-  id: string;
+  _id?: string;
+  id?: string;
   name: string;
   phone: string;
   relationship: string;
+  email?: string;
+  isPrimary?: boolean;
+  isNotified?: boolean;
 }
 
 export interface EmergencyAlert {
@@ -209,16 +213,19 @@ export interface SystemLog {
 export interface DriverStats {
   totalTrips: number;
   totalIncidents: number;
-  activeTrip: Trip | null;
+  activeTrip: { id: string } | null;
+  safetyScore: number | null;
   recentActivity: ActivityItem[];
 }
 
 export interface HospitalStats {
   activeIncidents: number;
-  pendingResponses: number;
   availableAmbulances: number;
-  totalResponders: number;
-  avgResponseTime: number;
+  totalAmbulances: number;
+  availableResponders: number;
+  availableBeds: number;
+  averageResponseTime: number;
+  lastUpdated: string;
 }
 
 export interface AdminStats {

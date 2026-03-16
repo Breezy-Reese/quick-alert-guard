@@ -43,7 +43,44 @@ const paginationValidation = [
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
 ];
 
-// Routes
+// ─── Routes ───────────────────────────────────────────────────────────────────
+
+// GET all incidents (role-filtered)
+router.get('/',
+  authenticate,
+  validate(paginationValidation),
+  incidentController.getIncidents
+);
+
+// GET active incidents
+router.get('/active',
+  authenticate,
+  authorize('hospital', 'admin'),
+  incidentController.getActiveIncidents
+);
+
+// GET incident stats
+router.get('/stats',
+  authenticate,
+  authorize('admin', 'hospital'),
+  incidentController.getIncidentStats
+);
+
+// GET incidents for a specific user
+router.get('/user/:userId',
+  authenticate,
+  validate(paginationValidation),
+  incidentController.getUserIncidents
+);
+
+// GET single incident
+router.get('/:incidentId',
+  authenticate,
+  validate(incidentIdParamValidation),
+  incidentController.getIncident
+);
+
+// POST create incident
 router.post('/',
   authenticate,
   requireDriver,
@@ -52,24 +89,7 @@ router.post('/',
   incidentController.createIncident
 );
 
-router.get('/active',
-  authenticate,
-  authorize('hospital', 'admin'),
-  incidentController.getActiveIncidents
-);
-
-router.get('/stats',
-  authenticate,
-  authorize('admin', 'hospital'),
-  incidentController.getIncidentStats
-);
-
-router.get('/:incidentId',
-  authenticate,
-  validate(incidentIdParamValidation),
-  incidentController.getIncident
-);
-
+// PUT update incident status
 router.put('/:incidentId',
   authenticate,
   authorize('hospital', 'admin'),
@@ -77,6 +97,7 @@ router.put('/:incidentId',
   incidentController.updateIncidentStatus
 );
 
+// POST accept incident
 router.post('/:incidentId/accept',
   authenticate,
   requireHospital,
@@ -84,36 +105,35 @@ router.post('/:incidentId/accept',
   incidentController.acceptIncident
 );
 
-router.get('/user/:userId',
-  authenticate,
-  validate(paginationValidation),
-  incidentController.getUserIncidents
-);
-
+// POST update responder location
 router.post('/:incidentId/responder/:responderId/location',
   authenticate,
   authorize('responder'),
   incidentController.updateResponderLocation
 );
 
+// POST mark responder arrived
 router.post('/:incidentId/responder/:responderId/arrived',
   authenticate,
   authorize('responder'),
   incidentController.markResponderArrived
 );
 
+// POST resolve incident
 router.post('/:incidentId/resolve',
   authenticate,
   authorize('responder', 'hospital', 'admin'),
   incidentController.resolveIncident
 );
 
+// POST cancel incident
 router.post('/:incidentId/cancel',
   authenticate,
   authorize('driver', 'hospital', 'admin'),
   incidentController.cancelIncident
 );
 
+// GET incident report
 router.get('/:incidentId/report',
   authenticate,
   authorize('hospital', 'admin'),

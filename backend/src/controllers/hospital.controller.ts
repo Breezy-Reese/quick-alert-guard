@@ -17,39 +17,53 @@ export const getHospitalDashboard = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    // Get hospital stats
-    const stats = await HospitalStats.findOne({ hospitalId });
-
     // Get active incidents
     const activeIncidents = await Incident.find({
       hospitalId,
       status: { $in: ['dispatched', 'en-route', 'arrived', 'treating'] }
     }).sort({ detectedAt: -1 }).limit(10);
 
-    // Get available responders
-    const availableResponders = await User.countDocuments({
-      hospitalId,
-      role: 'responder',
-      isActive: true,
-      'responderStatus.isAvailable': true
-    });
-
     // Get total incidents handled
     const totalIncidents = await Incident.countDocuments({ hospitalId });
+
+    // Compute all stats live from source collections
+    const [statsDoc, availableAmbulances, totalAmbulances, availableResponders, totalResponders] =
+      await Promise.all([
+        HospitalStats.findOne({ hospitalId }),
+        Ambulance.countDocuments({ status: 'available', isActive: true }),
+        Ambulance.countDocuments({ isActive: true }),
+        User.countDocuments({
+          hospitalId,
+          role: 'responder',
+          isActive: true,
+          'responderStatus.isAvailable': true,
+        }),
+        User.countDocuments({
+          hospitalId,
+          role: 'responder',
+          isActive: true,
+        }),
+      ]);
+
+    const stats = {
+      beds:                statsDoc?.availableBeds       ?? 0,
+      availableAmbulances,
+      totalAmbulances,
+      availableResponders: availableResponders || totalResponders,
+      totalResponders,
+      activeIncidents:     activeIncidents.length,
+      averageResponseTime: statsDoc?.averageResponseTime ?? 0,
+      lastUpdated:         statsDoc?.lastUpdated         ?? new Date(),
+    };
 
     return res.json({
       success: true,
       data: {
-        stats: stats || {
-          beds: 0,
-          ambulances: 0,
-          responders: 0,
-          activeIncidents: activeIncidents.length
-        },
+        stats,
         activeIncidents,
-        availableResponders,
+        availableResponders: stats.availableResponders,
         totalIncidents,
-        lastUpdated: stats?.lastUpdated || new Date()
+        lastUpdated: stats.lastUpdated,
       }
     });
   } catch (error: any) {
@@ -121,7 +135,7 @@ export const getHospitalIncidents = async (req: AuthRequest, res: Response) => {
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
       .populate('driverId', 'name phone')
-      .populate('responders.id', 'name');
+      .populate('responders.responderId', 'name');
 
     const total = await Incident.countDocuments(query);
 
@@ -160,10 +174,8 @@ export const getAvailableResponders = async (req: AuthRequest, res: Response) =>
       isActive: true
     }).select('name email phone responderType certifications experience currentLocation');
 
-    // Get responder statuses
     const respondersWithStatus = await Promise.all(
       responders.map(async (responder) => {
-        // You'd need a ResponderStatus model here
         const status = { isAvailable: true, currentIncidentId: null }; // Placeholder
         return {
           ...responder.toObject(),
@@ -205,8 +217,7 @@ export const dispatchResponder = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, error: 'Responder not found' });
     }
 
-    // Calculate ETA
-    const eta = 10; // Placeholder - calculate actual ETA
+    const eta = 10; // Placeholder
 
     const responderInfo = {
       id: responderId,
@@ -214,7 +225,7 @@ export const dispatchResponder = async (req: AuthRequest, res: Response) => {
       type: responder.responderType || 'ambulance',
       hospital: hospitalId.toString(),
       eta,
-      distance: 5, // Placeholder - calculate actual distance
+      distance: 5, // Placeholder
       status: 'dispatched',
       dispatchedAt: new Date()
     };
@@ -223,9 +234,6 @@ export const dispatchResponder = async (req: AuthRequest, res: Response) => {
     incident.status = 'dispatched';
     incident.hospitalId = hospitalId as any;
     await incident.save();
-
-    // Update responder status (you'd need a ResponderStatus model)
-    // await ResponderStatus.findOneAndUpdate(...)
 
     logger.info(`Responder ${responderId} dispatched to incident ${incidentId}`);
 
@@ -252,38 +260,26 @@ export const getHospitalAnalytics = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    // Calculate date range
     const endDate = new Date();
     const startDate = new Date();
 
     switch (period) {
-      case 'day':
-        startDate.setDate(startDate.getDate() - 1);
-        break;
-      case 'week':
-        startDate.setDate(startDate.getDate() - 7);
-        break;
-      case 'month':
-        startDate.setMonth(startDate.getMonth() - 1);
-        break;
-      case 'year':
-        startDate.setFullYear(startDate.getFullYear() - 1);
-        break;
+      case 'day':   startDate.setDate(startDate.getDate() - 1); break;
+      case 'week':  startDate.setDate(startDate.getDate() - 7); break;
+      case 'month': startDate.setMonth(startDate.getMonth() - 1); break;
+      case 'year':  startDate.setFullYear(startDate.getFullYear() - 1); break;
     }
 
-    // Get incidents in period
     const incidents = await Incident.find({
       hospitalId,
       detectedAt: { $gte: startDate, $lte: endDate }
     });
 
-    // Calculate stats
     const totalIncidents = incidents.length;
     const resolvedIncidents = incidents.filter(i => i.status === 'resolved').length;
     const criticalIncidents = incidents.filter(i => i.severity === 'critical').length;
-    const avgResponseTime = 15; // Placeholder - calculate actual average
+    const avgResponseTime = 15; // Placeholder
 
-    // Group by day/week for trends
     const incidentsByDay = incidents.reduce((acc: any, incident) => {
       const day = incident.detectedAt.toISOString().split('T')[0];
       acc[day] = (acc[day] || 0) + 1;
@@ -295,12 +291,7 @@ export const getHospitalAnalytics = async (req: AuthRequest, res: Response) => {
       data: {
         period,
         dateRange: { startDate, endDate },
-        summary: {
-          totalIncidents,
-          resolvedIncidents,
-          criticalIncidents,
-          avgResponseTime
-        },
+        summary: { totalIncidents, resolvedIncidents, criticalIncidents, avgResponseTime },
         incidentsByDay: Object.entries(incidentsByDay).map(([date, count]) => ({ date, count }))
       }
     });
@@ -324,11 +315,7 @@ export const updateHospitalLocation = async (req: AuthRequest, res: Response) =>
 
     const hospital = await User.findByIdAndUpdate(
       hospitalId,
-      {
-        $set: {
-          location: { lat, lng }
-        }
-      },
+      { $set: { location: { lat, lng } } },
       { new: true }
     ).select('name location');
 
@@ -360,22 +347,17 @@ export const getNearbyHospitals = async (req: Request, res: Response) => {
     const longitude = parseFloat(lng as string);
     const searchRadius = parseFloat(radius as string);
 
-    // Find hospitals with location
     const hospitals = await User.find({
       role: 'hospital',
       isActive: true,
       location: {
         $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: [longitude, latitude]
-          },
+          $geometry: { type: 'Point', coordinates: [longitude, latitude] },
           $maxDistance: searchRadius * 1000
         }
       }
     }).select('hospitalName address phone location');
 
-    // Get stats for each hospital
     const hospitalsWithStats = await Promise.all(
       hospitals.map(async (hospital) => {
         const stats = await HospitalStats.findOne({ hospitalId: hospital._id });
@@ -400,11 +382,9 @@ export const getNearbyHospitals = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, error: error.message });
   }
 };
+
 /* ============================================================
    GET HOSPITAL STATS
-   Replace the existing getHospitalStats function in hospital.controller.ts
-   Also add this import at the top of hospital.controller.ts:
-   import { Ambulance } from '../models/Ambulance.model';
 ============================================================ */
 export const getHospitalStats = async (req: AuthRequest, res: Response) => {
   try {
@@ -414,44 +394,35 @@ export const getHospitalStats = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    // HospitalStats for beds and response time
-    const stats = await HospitalStats.findOne({ hospitalId });
+    const statsDoc = await HospitalStats.findOne({ hospitalId });
 
-    // Count directly from Ambulance collection
-    const availableAmbulances = await Ambulance.countDocuments({
-      status: 'available',
-      isActive: true,
-    });
-
-    const totalAmbulances = await Ambulance.countDocuments({
-      isActive: true,
-    });
-
-    // Count responders from User collection
-    const availableResponders = await User.countDocuments({
-      hospitalId,
-      role: 'responder',
-      isActive: true,
-      'responderStatus.isAvailable': true,
-    });
-
-    const totalResponders = await User.countDocuments({
-      hospitalId,
-      role: 'responder',
-      isActive: true,
-    });
+    const [availableAmbulances, totalAmbulances, availableResponders, totalResponders] =
+      await Promise.all([
+        Ambulance.countDocuments({ status: 'available', isActive: true }),
+        Ambulance.countDocuments({ isActive: true }),
+        User.countDocuments({
+          hospitalId,
+          role: 'responder',
+          isActive: true,
+          'responderStatus.isAvailable': true,
+        }),
+        User.countDocuments({
+          hospitalId,
+          role: 'responder',
+          isActive: true,
+        }),
+      ]);
 
     return res.json({
       success: true,
       data: {
         availableAmbulances,
         totalAmbulances,
-        // Fall back to totalResponders if none marked available
         availableResponders: availableResponders || totalResponders,
-        availableBeds:       stats?.availableBeds ?? 0,
-        activeIncidents:     stats?.activeIncidents ?? 0,
-        averageResponseTime: stats?.averageResponseTime ?? 0,
-        lastUpdated:         stats?.lastUpdated ?? new Date(),
+        availableBeds:       statsDoc?.availableBeds       ?? 0,
+        activeIncidents:     statsDoc?.activeIncidents      ?? 0,
+        averageResponseTime: statsDoc?.averageResponseTime  ?? 0,
+        lastUpdated:         statsDoc?.lastUpdated          ?? new Date(),
       },
     });
   } catch (error: any) {

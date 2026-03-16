@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { hospitalService } from "@/services/api/hospital.service";
-import type { Responder } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -8,17 +7,22 @@ import EmptyState from "@/components/common/EmptyState";
 import { Users } from "lucide-react";
 
 const HospitalResponders: React.FC = () => {
-  const [responders, setResponders] = useState<Responder[]>([]);
+  const [responders, setResponders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    const load = async () => {
       try {
-        const res = await hospitalService.getResponders();
-        setResponders(res.data.data);
-      } catch {} finally { setIsLoading(false); }
+        // getAvailableResponders() unwraps to data.data — returns array directly
+        const res = await hospitalService.getAvailableResponders();
+        setResponders(Array.isArray(res) ? res : []);
+      } catch (e) {
+        console.error("Responders load error:", e);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    fetch();
+    load();
   }, []);
 
   return (
@@ -30,36 +34,45 @@ const HospitalResponders: React.FC = () => {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-3 p-6">{[1,2,3].map(i => <div key={i} className="h-12 animate-pulse rounded bg-muted" />)}</div>
+            <div className="space-y-3 p-6">
+              {[1, 2, 3].map((i) => <div key={i} className="h-12 animate-pulse rounded bg-muted" />)}
+            </div>
           ) : responders.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Phone</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Assigned</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {responders.map((r) => (
-                  <TableRow key={r.id}>
+                  <TableRow key={r._id}>
                     <TableCell className="font-medium">{r.name}</TableCell>
-                    <TableCell>{r.role}</TableCell>
+                    <TableCell>{r.responderType ?? r.role ?? "—"}</TableCell>
                     <TableCell>{r.phone}</TableCell>
+                    <TableCell>{r.email}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={r.isAvailable ? "bg-success/15 text-success border-success/30" : "bg-muted text-muted-foreground"}>
-                        {r.isAvailable ? "Available" : "Busy"}
+                      <Badge
+                        variant="outline"
+                        className={
+                          r.status === "available"
+                            ? "bg-success/15 text-success border-success/30"
+                            : "bg-muted text-muted-foreground"
+                        }
+                      >
+                        {r.status ?? (r.isAvailable ? "Available" : "Busy")}
                       </Badge>
                     </TableCell>
-                    <TableCell>{r.assignedIncidentId?.slice(0, 8) || "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           ) : (
-            <EmptyState icon={Users} title="No responders" description="Responder data will appear here when backend is connected." />
+            <EmptyState icon={Users} title="No responders" description="Responder data will appear here when available." />
           )}
         </CardContent>
       </Card>

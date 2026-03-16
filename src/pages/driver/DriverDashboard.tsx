@@ -57,13 +57,13 @@ const DriverDashboard: React.FC = () => {
           isLoading={isLoading}
         />
         <StatsCard
-          title="Safety Score"
-          value={null}
-          icon={Activity}
-          variant="success"
-          description="Connected to backend"
-          isLoading={isLoading}
-        />
+  title="Safety Score"
+  value={stats?.safetyScore ?? null}
+  icon={Activity}
+  variant="success"
+  description={stats?.safetyScore ? `Score: ${stats.safetyScore}/100` : "Connected to backend"}
+  isLoading={isLoading}
+/>
       </div>
 
       {/* Recent Activity */}

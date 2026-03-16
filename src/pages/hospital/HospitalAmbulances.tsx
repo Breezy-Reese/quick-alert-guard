@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { hospitalService } from "@/services/api/hospital.service";
-import type { Ambulance } from "@/types";
+import api from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AmbulanceStatusBadge } from "@/components/common/StatusBadges";
@@ -8,17 +7,22 @@ import EmptyState from "@/components/common/EmptyState";
 import { Ambulance as AmbulanceIcon } from "lucide-react";
 
 const HospitalAmbulances: React.FC = () => {
-  const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
+  const [ambulances, setAmbulances] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    const load = async () => {
       try {
-        const res = await hospitalService.getAmbulances();
-        setAmbulances(res.data.data);
-      } catch {} finally { setIsLoading(false); }
+        const { data } = await api.get("/ambulances");
+        // backend returns { success, data: { ambulances: [] } }
+        setAmbulances(data?.data?.ambulances ?? data?.data ?? []);
+      } catch (e) {
+        console.error("Ambulances load error:", e);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    fetch();
+    load();
   }, []);
 
   return (
@@ -30,30 +34,36 @@ const HospitalAmbulances: React.FC = () => {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-3 p-6">{[1,2,3].map(i => <div key={i} className="h-12 animate-pulse rounded bg-muted" />)}</div>
+            <div className="space-y-3 p-6">
+              {[1, 2, 3].map((i) => <div key={i} className="h-12 animate-pulse rounded bg-muted" />)}
+            </div>
           ) : ambulances.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Vehicle #</TableHead>
+                  <TableHead>Plate</TableHead>
+                  <TableHead>Model</TableHead>
+                  <TableHead>Make</TableHead>
+                  <TableHead>Year</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Crew</TableHead>
-                  <TableHead>Assigned Incident</TableHead>
+                  <TableHead>Driver</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {ambulances.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-medium">{a.vehicleNumber}</TableCell>
+                  <TableRow key={a._id}>
+                    <TableCell className="font-medium">{a.plateNumber}</TableCell>
+                    <TableCell>{a.ambulanceModel}</TableCell>
+                    <TableCell>{a.make}</TableCell>
+                    <TableCell>{a.year}</TableCell>
                     <TableCell><AmbulanceStatusBadge status={a.status} /></TableCell>
-                    <TableCell>{a.crew.join(", ") || "—"}</TableCell>
-                    <TableCell>{a.assignedIncidentId?.slice(0, 8) || "—"}</TableCell>
+                    <TableCell>{a.driverId?.name ?? "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           ) : (
-            <EmptyState icon={AmbulanceIcon} title="No ambulances" description="Ambulance data will appear here when backend is connected." />
+            <EmptyState icon={AmbulanceIcon} title="No ambulances" description="Ambulance data will appear here when available." />
           )}
         </CardContent>
       </Card>

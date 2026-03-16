@@ -23,17 +23,20 @@ interface AdminStats {
 
 const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [health, setHealth] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        // Backend returns { stats: {...}, recentIncidents: [], recentUsers: [] }
-        // so we pull out .stats for the counts
-        const result = await adminService.getDashboardStats();
-        setStats(result?.stats ?? result);
+        const [statsResult, healthResult] = await Promise.all([
+          adminService.getDashboardStats(),
+          adminService.getSystemHealth(),
+        ]);
+        setStats(statsResult?.stats ?? statsResult);
+        setHealth(healthResult);
       } catch (err) {
-        console.error("Failed to load admin dashboard stats:", err);
+        console.error("Failed to load admin dashboard:", err);
       } finally {
         setIsLoading(false);
       }
@@ -92,30 +95,48 @@ const AdminDashboard: React.FC = () => {
                 <div key={i} className="h-20 animate-pulse rounded bg-muted" />
               ))}
             </div>
-          ) : stats?.systemHealth ? (
+          ) : health ? (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {Object.values(stats.systemHealth).map((service) => (
-                <div key={service.name} className="rounded-lg border border-border p-3">
-                  <p className="text-sm font-medium text-foreground">{service.name}</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <div
-                      className={`h-2 w-2 rounded-full ${
-                        service.status === "operational"
-                          ? "bg-success"
-                          : service.status === "degraded"
-                          ? "bg-warning"
-                          : "bg-destructive"
-                      }`}
-                    />
-                    <span className="text-xs capitalize text-muted-foreground">
-                      {service.status}
-                    </span>
-                  </div>
-                  {service.latency && (
-                    <p className="mt-1 text-xs text-muted-foreground">{service.latency}ms</p>
-                  )}
+              {/* Server */}
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-sm font-medium text-foreground">Server</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <div className={`h-2 w-2 rounded-full ${health.status === 'healthy' ? 'bg-success' : 'bg-warning'}`} />
+                  <span className="text-xs capitalize text-muted-foreground">{health.status}</span>
                 </div>
-              ))}
+                <p className="mt-1 text-xs text-muted-foreground">v{health.version}</p>
+              </div>
+              {/* Database */}
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-sm font-medium text-foreground">Database</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <div className={`h-2 w-2 rounded-full ${health.database === 'connected' ? 'bg-success' : 'bg-destructive'}`} />
+                  <span className="text-xs capitalize text-muted-foreground">{health.database}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">MongoDB</p>
+              </div>
+              {/* Uptime */}
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-sm font-medium text-foreground">Uptime</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-success" />
+                  <span className="text-xs text-muted-foreground">
+                    {Math.floor(health.uptime / 3600)}h {Math.floor((health.uptime % 3600) / 60)}m
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{health.environment}</p>
+              </div>
+              {/* Memory */}
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-sm font-medium text-foreground">Memory</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-info" />
+                  <span className="text-xs text-muted-foreground">
+                    {(health.memory?.heapUsed / 1024 / 1024).toFixed(1)} MB
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">heap used</p>
+              </div>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">

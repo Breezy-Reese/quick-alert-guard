@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService, User } from '@/services/api/auth.service';
+import { TOKEN_KEYS } from '@/config/axios.config';
 
 interface AuthContextValue {
   user: User | null;
@@ -7,7 +8,15 @@ interface AuthContextValue {
   isLoading: boolean;
   error: string | null;
   clearError: () => void;
-  register: (email: string, password: string, name: string, role: string, phone?: string, hospitalName?: string, licenseNumber?: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    name: string,
+    role: string,
+    phone?: string,
+    hospitalName?: string,
+    licenseNumber?: string,
+  ) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -21,16 +30,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const clearError = () => setError(null);
 
+  // On mount — restore session if access token exists
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem(TOKEN_KEYS.access);
     if (token) {
       authService
         .getMe()
         .then((u) => setUser(u))
         .catch(() => {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_refresh_token');
-          localStorage.removeItem('auth_user');
+          localStorage.removeItem(TOKEN_KEYS.access);
+          localStorage.removeItem(TOKEN_KEYS.refresh);
         })
         .finally(() => setIsLoading(false));
     } else {
@@ -39,14 +48,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setError(null);
       const u = await authService.login({ email, password });
       setUser(u);
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Login failed';
       setError(msg);
       throw err;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -59,8 +71,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     hospitalName?: string,
     licenseNumber?: string,
   ) => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setError(null);
       const u = await authService.register({
         email,
         password,
@@ -75,17 +88,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const msg = err?.response?.data?.error || err?.message || 'Registration failed';
       setError(msg);
       throw err;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const logout = async () => {
-    await authService.logout();
-    setUser(null);
+    try {
+      await authService.logout();
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, error, clearError, login, register, logout }}>
-      {isLoading ? null : children}
+    <AuthContext.Provider
+      value={{ user, isAuthenticated: !!user, isLoading, error, clearError, login, register, logout }}
+    >
+      {isLoading ? (
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <span className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };
