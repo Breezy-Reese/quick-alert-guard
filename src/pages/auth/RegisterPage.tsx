@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, Shield, UserPlus } from "lucide-react";
-import type { UserRole } from "@/types";
+
+type UserRole = "driver" | "hospital" | "responder";
 
 const RegisterPage: React.FC = () => {
   const { register, error, clearError, isLoading } = useAuth();
@@ -20,6 +21,8 @@ const RegisterPage: React.FC = () => {
     password: "",
     confirmPassword: "",
     role: "" as UserRole | "",
+    hospitalName: "",
+    licenseNumber: "",
   });
   const [localError, setLocalError] = useState("");
 
@@ -36,9 +39,25 @@ const RegisterPage: React.FC = () => {
       setLocalError("Please select a role");
       return;
     }
+    if (form.role === "hospital" && !form.hospitalName.trim()) {
+      setLocalError("Hospital name is required");
+      return;
+    }
+    if (form.role === "driver" && !form.licenseNumber.trim()) {
+      setLocalError("License number is required");
+      return;
+    }
 
     try {
-      await register(form.email, form.password, form.name, form.role as UserRole, form.phone || undefined);
+      await register(
+        form.email,
+        form.password,
+        form.name,
+        form.role as UserRole,
+        form.phone,
+        form.role === "hospital" ? form.hospitalName : undefined,
+        form.role === "driver" ? form.licenseNumber : undefined,
+      );
       navigate("/");
     } catch {
       // error handled in context
@@ -71,41 +90,71 @@ const RegisterPage: React.FC = () => {
                   {displayError}
                 </div>
               )}
+
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
-                <Input id="name" placeholder="John Doe" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                <Input id="name" placeholder="John Doe" value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+                <Input id="email" type="email" placeholder="you@example.com" value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })} required />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone (optional)</Label>
-                <Input id="phone" type="tel" placeholder="+1 234 567 8900" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" type="tel" placeholder="+254 712 345 678" value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
-                <Select value={form.role} onValueChange={(val) => setForm({ ...form, role: val as UserRole })}>
+                <Select value={form.role} onValueChange={(val) => setForm({ ...form, role: val as UserRole, hospitalName: "", licenseNumber: "" })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="driver">Driver</SelectItem>
                     <SelectItem value="hospital">Hospital</SelectItem>
+                    <SelectItem value="responder">Responder</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Conditional: hospital name */}
+              {form.role === "hospital" && (
+                <div className="space-y-2">
+                  <Label htmlFor="hospitalName">Hospital Name</Label>
+                  <Input id="hospitalName" placeholder="Nairobi General Hospital" value={form.hospitalName}
+                    onChange={(e) => setForm({ ...form, hospitalName: e.target.value })} required />
+                </div>
+              )}
+
+              {/* Conditional: license number */}
+              {form.role === "driver" && (
+                <div className="space-y-2">
+                  <Label htmlFor="licenseNumber">License Number</Label>
+                  <Input id="licenseNumber" placeholder="DL-12345678" value={form.licenseNumber}
+                    onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} required />
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" placeholder="••••••••" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+                  <Input id="password" type="password" placeholder="••••••••" value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm</Label>
-                  <Input id="confirmPassword" type="password" placeholder="••••••••" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} required />
+                  <Input id="confirmPassword" type="password" placeholder="••••••••" value={form.confirmPassword}
+                    onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} required />
                 </div>
               </div>
             </CardContent>
+
             <CardFooter className="flex flex-col gap-3">
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (

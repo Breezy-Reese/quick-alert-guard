@@ -1,26 +1,156 @@
-import axiosInstance from "@/config/axios.config";
-import { API_ENDPOINTS } from "@/constants/apiEndpoints";
-import type { AdminStats, ApiResponse, PaginatedResponse, SystemHealth, SystemLog, User, UserRole } from "@/types";
+import api from '@/lib/api';
+
+/* ============================================================
+   TYPES
+============================================================ */
+
+export interface AdminPaginationParams {
+  page?: number;
+  limit?: number;
+  role?: string;
+  search?: string;
+}
+
+export interface AuditLogParams extends AdminPaginationParams {
+  actorRole?: string;
+  action?: string;
+  actorId?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface IncidentFilterParams extends AdminPaginationParams {
+  status?: string;
+  severity?: string;
+}
+
+export type ExportType = 'incidents' | 'audit_log' | 'driver_scores' | 'notifications' | 'users' | 'trips';
+export type ExportFormat = 'csv' | 'pdf';
+
+export interface CreateExportPayload {
+  type: ExportType;
+  format?: ExportFormat;
+  filters?: Record<string, unknown>;
+}
+
+export interface UpdateUserPayload {
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  isActive?: boolean;
+}
+
+/* ============================================================
+   SERVICE
+============================================================ */
 
 export const adminService = {
-  getStats: () =>
-    axiosInstance.get<ApiResponse<AdminStats>>(API_ENDPOINTS.ADMIN_STATS),
+  // ── Dashboard ──────────────────────────────────────────────
 
-  getSystemHealth: () =>
-    axiosInstance.get<ApiResponse<SystemHealth>>(API_ENDPOINTS.ADMIN_SYSTEM_HEALTH),
+  /**
+   * GET /api/admin/dashboard
+   * Returns stats directly (no extra unwrapping needed in components)
+   */
+  async getDashboardStats() {
+    const { data } = await api.get('/admin/dashboard');
+    return data.data;
+  },
 
-  getLogs: (params?: { page?: number; level?: string; source?: string; search?: string }) =>
-    axiosInstance.get<PaginatedResponse<SystemLog>>(API_ENDPOINTS.ADMIN_LOGS, { params }),
+  // Alias — AdminDashboard.tsx calls getStats()
+  async getStats() {
+    const { data } = await api.get('/admin/dashboard');
+    return data.data;
+  },
 
-  getUsers: (params?: { page?: number; role?: UserRole; search?: string }) =>
-    axiosInstance.get<PaginatedResponse<User>>(API_ENDPOINTS.USERS, { params }),
+  // ── Users ──────────────────────────────────────────────────
 
-  getUserById: (id: string) =>
-    axiosInstance.get<ApiResponse<User>>(API_ENDPOINTS.USER_BY_ID(id)),
+  /**
+   * GET /api/admin/users
+   */
+  async getAllUsers(params?: AdminPaginationParams) {
+    const { data } = await api.get('/admin/users', { params });
+    return data.data;
+  },
 
-  updateUserRole: (id: string, role: UserRole) =>
-    axiosInstance.patch(API_ENDPOINTS.USER_ROLE(id), { role }),
+  // Alias — AdminUsers.tsx calls getUsers()
+  async getUsers(params?: AdminPaginationParams) {
+    const { data } = await api.get('/admin/users', { params });
+    return data.data;
+  },
 
-  getReports: () =>
-    axiosInstance.get(API_ENDPOINTS.ADMIN_REPORTS),
+  async getUserById(id: string) {
+    const { data } = await api.get(`/admin/users/${id}`);
+    return data.data;
+  },
+
+  async updateUser(id: string, payload: UpdateUserPayload) {
+    const { data } = await api.put(`/admin/users/${id}`, payload);
+    return data.data;
+  },
+
+  async toggleUserStatus(id: string) {
+    const { data } = await api.patch(`/admin/users/${id}/toggle-status`);
+    return data.data;
+  },
+
+  async deleteUser(id: string): Promise<void> {
+    await api.delete(`/admin/users/${id}`);
+  },
+
+  // ── Incidents ──────────────────────────────────────────────
+
+  async getAllIncidents(params?: IncidentFilterParams) {
+    const { data } = await api.get('/admin/incidents', { params });
+    return data.data;
+  },
+
+  // ── Audit Log ──────────────────────────────────────────────
+
+  async getAuditLog(params?: AuditLogParams) {
+    const { data } = await api.get('/admin/audit-log', { params });
+    return data.data;
+  },
+
+  // Alias — AdminLogs.tsx calls getLogs()
+  async getLogs(params?: AuditLogParams) {
+    const { data } = await api.get('/admin/audit-log', { params });
+    return data.data;
+  },
+
+  // ── Exports ────────────────────────────────────────────────
+
+  async getExportJobs(params?: AdminPaginationParams) {
+    const { data } = await api.get('/admin/exports', { params });
+    return data.data;
+  },
+
+  async createExportJob(payload: CreateExportPayload) {
+    const { data } = await api.post('/admin/exports', payload);
+    return data.data;
+  },
+
+  async getExportJobById(id: string) {
+    const { data } = await api.get(`/admin/exports/${id}`);
+    return data.data;
+  },
+
+  async downloadExport(id: string): Promise<Blob> {
+    const response = await api.get(`/admin/exports/${id}/download`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // ── System ─────────────────────────────────────────────────
+
+  async getSystemHealth() {
+    const { data } = await api.get('/admin/system/health');
+    return data.data;
+  },
+
+  async getSystemReports() {
+    const { data } = await api.get('/admin/reports');
+    return data.data;
+  },
 };

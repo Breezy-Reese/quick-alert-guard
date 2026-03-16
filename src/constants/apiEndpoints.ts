@@ -1,70 +1,52 @@
 export const API_ENDPOINTS = {
   // Auth
-  LOGIN: "/auth/login",
-  REGISTER: "/auth/register",
-  LOGOUT: "/auth/logout",
-  REFRESH_TOKEN: "/auth/refresh",
-  FORGOT_PASSWORD: "/auth/forgot-password",
-  RESET_PASSWORD: "/auth/reset-password",
-  ME: "/auth/me",
+  LOGIN: '/auth/login',
+  REGISTER: '/auth/register',
+  LOGOUT: '/auth/logout',
+  ME: '/auth/me',
+  REFRESH_TOKEN: '/auth/refresh-token',
+  FORGOT_PASSWORD: '/auth/forgot-password',
+  RESET_PASSWORD: '/auth/reset-password',
+  CHANGE_PASSWORD: '/auth/change-password',
+  VERIFY_EMAIL: '/auth/verify-email',
+  RESEND_VERIFICATION: '/auth/resend-verification',
 
   // Users
-  USERS: "/users",
-  USER_BY_ID: (id: string) => `/users/${id}`,
-  USER_ROLE: (id: string) => `/users/${id}/role`,
-
-  // Driver
-  DRIVER_PROFILE: "/driver/profile",
-  DRIVER_STATS: "/driver/stats",
-  DRIVER_VEHICLE: "/driver/vehicle",
-  DRIVER_CONTACTS: "/driver/emergency-contacts",
-  DRIVER_CONTACT_BY_ID: (id: string) => `/driver/emergency-contacts/${id}`,
-
-  // Trips
-  TRIPS: "/trips",
-  TRIP_BY_ID: (id: string) => `/trips/${id}`,
-  TRIP_ACTIVE: "/trips/active",
-  TRIP_START: "/trips/start",
-  TRIP_END: (id: string) => `/trips/${id}/end`,
-
-  // Emergency
-  EMERGENCY_TRIGGER: "/emergency/trigger",
-  EMERGENCY_CANCEL: (id: string) => `/emergency/${id}/cancel`,
-  EMERGENCY_ALERTS: "/emergency/alerts",
-  EMERGENCY_ALERT_BY_ID: (id: string) => `/emergency/alerts/${id}`,
+  PROFILE: '/users/profile',
+  UPDATE_PROFILE: '/users/profile',
+  EMERGENCY_CONTACTS: '/users/emergency-contacts',
+  MEDICAL_INFO: '/users/medical-info',
+  PREFERENCES: '/users/preferences',
+  TRIP_SCORES: '/users/trip-scores',
+  DRIVERS: '/users/drivers',
+  HOSPITALS: '/users/hospitals',
+  RESPONDERS: '/users/responders',
 
   // Incidents
-  INCIDENTS: "/incidents",
-  INCIDENT_BY_ID: (id: string) => `/incidents/${id}`,
-  INCIDENT_ASSIGN: (id: string) => `/incidents/${id}/assign`,
-  INCIDENT_RESOLVE: (id: string) => `/incidents/${id}/resolve`,
-
-  // Hospital
-  HOSPITAL_PROFILE: "/hospital/profile",
-  HOSPITAL_STATS: "/hospital/stats",
+  INCIDENTS: '/incidents',
+  ACTIVE_INCIDENTS: '/incidents/active',
+  INCIDENT_STATS: '/incidents/stats',
 
   // Ambulances
-  AMBULANCES: "/ambulances",
-  AMBULANCE_BY_ID: (id: string) => `/ambulances/${id}`,
-  AMBULANCE_DISPATCH: (id: string) => `/ambulances/${id}/dispatch`,
-  AMBULANCE_STATUS: (id: string) => `/ambulances/${id}/status`,
+  AMBULANCES: '/ambulances',
 
-  // Responders
-  RESPONDERS: "/responders",
-  RESPONDER_BY_ID: (id: string) => `/responders/${id}`,
-  RESPONDER_ASSIGN: (id: string) => `/responders/${id}/assign`,
-
-  // Analytics
-  ANALYTICS_RESPONSE_TIMES: "/analytics/response-times",
-  ANALYTICS_INCIDENT_TRENDS: "/analytics/incident-trends",
-  ANALYTICS_PERFORMANCE: "/analytics/performance",
+  // Hospital
+  HOSPITAL_DASHBOARD: '/hospitals/dashboard',
+  HOSPITAL_CAPACITY: '/hospitals/capacity',
+  HOSPITAL_INCIDENTS: '/hospitals/incidents',
+  HOSPITAL_RESPONDERS: '/hospitals/responders',
+  HOSPITAL_DISPATCH: '/hospitals/dispatch',
+  HOSPITAL_ANALYTICS: '/hospitals/analytics',
+  HOSPITAL_STATS: '/hospitals/stats',
+  HOSPITAL_LOCATION: '/hospitals/location',
+  HOSPITALS_NEARBY: '/hospitals/nearby',
 
   // Admin
-  ADMIN_STATS: "/admin/stats",
-  ADMIN_SYSTEM_HEALTH: "/admin/system-health",
-  ADMIN_LOGS: "/admin/logs",
-  ADMIN_REPORTS: "/admin/reports",
-
-  // Location
-  LOCATION_UPDATE: "/location/update",
+  ADMIN_DASHBOARD: '/admin/dashboard',
+  ADMIN_USERS: '/admin/users',
+  ADMIN_INCIDENTS: '/admin/incidents',
+  ADMIN_AUDIT_LOG: '/admin/audit-log',
+  ADMIN_EXPORTS: '/admin/exports',
+  ADMIN_SYSTEM_HEALTH: '/admin/system/health',
+  ADMIN_REPORTS: '/admin/reports',
 } as const;
