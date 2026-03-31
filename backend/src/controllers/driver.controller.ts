@@ -15,6 +15,12 @@ const getDriverId = (req: AuthRequest) => req.user?._id;
 const unauthorized = (res: Response) =>
   res.status(401).json({ success: false, error: 'Unauthorized' });
 
+// Maps MongoDB _id to id for frontend compatibility
+const normalizeTrip = (trip: any) => ({
+  ...trip,
+  id: trip._id.toString(),
+});
+
 /* ============================================================
    STATS   GET /api/driver/stats
 ============================================================ */
@@ -27,7 +33,7 @@ export const getDriverStats = async (req: AuthRequest, res: Response) => {
       await Promise.all([
         TripScore.countDocuments({ driverId: id }),
         Incident.countDocuments({ driverId: id }),
-        TripScore.findOne({ driverId: id, endTime: { $exists: false } }).sort({ createdAt: -1 }).lean(),
+        Trip.findOne({ driverId: id, status: 'active' }).sort({ createdAt: -1 }).lean(),
         TripScore.aggregate([
           { $match: { driverId: id } },
           { $group: { _id: null, average: { $avg: '$score' } } },
@@ -92,7 +98,7 @@ export const getTrips = async (req: AuthRequest, res: Response) => {
 
     return res.json({
       success: true,
-      data: trips,
+      data: trips.map(normalizeTrip),
       pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
     });
   } catch (error: any) {
@@ -109,8 +115,14 @@ export const getActiveTrip = async (req: AuthRequest, res: Response) => {
     const id = getDriverId(req);
     if (!id) return unauthorized(res);
 
-    const trip = await Trip.findOne({ driverId: id, status: 'active' }).sort({ createdAt: -1 }).lean();
-    return res.json({ success: true, data: trip ?? null });
+    const trip = await Trip.findOne({ driverId: id, status: 'active' })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.json({
+      success: true,
+      data: trip ? normalizeTrip(trip) : null,
+    });
   } catch (error: any) {
     logger.error('Get active trip error:', error);
     return res.status(500).json({ success: false, error: error.message || 'Failed to get active trip' });
@@ -137,7 +149,10 @@ export const startTrip = async (req: AuthRequest, res: Response) => {
       startLocation: req.body.startLocation,
     });
 
-    return res.status(201).json({ success: true, data: trip });
+    return res.status(201).json({
+      success: true,
+      data: normalizeTrip(trip.toObject()),
+    });
   } catch (error: any) {
     logger.error('Start trip error:', error);
     return res.status(500).json({ success: false, error: error.message || 'Failed to start trip' });
@@ -164,7 +179,11 @@ export const endTrip = async (req: AuthRequest, res: Response) => {
     trip.safetyScore = safetyScore;
 
     await trip.save();
-    return res.json({ success: true, data: trip });
+
+    return res.json({
+      success: true,
+      data: normalizeTrip(trip.toObject()),
+    });
   } catch (error: any) {
     logger.error('End trip error:', error);
     return res.status(500).json({ success: false, error: error.message || 'Failed to end trip' });

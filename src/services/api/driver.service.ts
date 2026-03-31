@@ -31,11 +31,15 @@ export const driverService = {
     axiosInstance.get<PaginatedResponse<Trip>>(API_ENDPOINTS.TRIPS, { params }),
 
   getActiveTrip: () =>
-    axiosInstance.get<ApiResponse<Trip | null>>(API_ENDPOINTS.TRIP_ACTIVE),
+    axiosInstance.get<ApiResponse<Trip | null>>(API_ENDPOINTS.TRIP_ACTIVE, {
+      params: { _t: Date.now() },
+      headers: { "Cache-Control": "no-cache" },
+    }),
 
   startTrip: (startLocation: { lat: number; lng: number }) =>
     axiosInstance.post<ApiResponse<Trip>>(API_ENDPOINTS.TRIP_START, { startLocation }),
 
   endTrip: (id: string, endLocation: { lat: number; lng: number }) =>
-    axiosInstance.post<ApiResponse<Trip>>(API_ENDPOINTS.TRIP_END(id), { endLocation }),
+    axiosInstance.put<ApiResponse<Trip>>(API_ENDPOINTS.TRIP_END(id), { endLocation }),
+  //             ^^^ PUT not POST — matches the backend route
 };

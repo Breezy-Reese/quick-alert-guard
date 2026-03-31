@@ -4,7 +4,7 @@ import type { Trip } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import EmptyState from "@/components/common/EmptyState";
-import { MapPin, Play, Square } from "lucide-react";
+import { MapPin, Play, Square, RefreshCw } from "lucide-react";
 
 const DriverActiveTrip: React.FC = () => {
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -16,10 +16,13 @@ const DriverActiveTrip: React.FC = () => {
   }, []);
 
   const fetchActiveTrip = async () => {
+    setIsLoading(true);
     try {
       const res = await driverService.getActiveTrip();
-      setTrip(res.data.data);
+      setTrip(res.data.data ?? null);
+      setError("");
     } catch {
+      setTrip(null);
       setError("Unable to load active trip.");
     } finally {
       setIsLoading(false);
@@ -37,14 +40,26 @@ const DriverActiveTrip: React.FC = () => {
         : { lat: 0, lng: 0 };
 
       const res = await driverService.startTrip(location);
-      setTrip(res.data.data);
-    } catch {
-      setError("Failed to start trip.");
+
+      const newTrip = res.data.data;
+      if (!newTrip?.id) {
+        setError("Failed to start trip: no trip ID returned.");
+        return;
+      }
+
+      setTrip(newTrip);
+      setError("");
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to start trip.";
+      setError(message);
     }
   };
 
   const endTrip = async () => {
-    if (!trip) return;
+    if (!trip?.id) {
+      setError("No active trip found. Try refreshing.");
+      return;
+    }
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
@@ -56,16 +71,23 @@ const DriverActiveTrip: React.FC = () => {
 
       await driverService.endTrip(trip.id, location);
       setTrip(null);
-    } catch {
-      setError("Failed to end trip.");
+      setError("");
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to end trip.";
+      setError(message);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Active Trip</h1>
-        <p className="text-sm text-muted-foreground">Track your current journey</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Active Trip</h1>
+          <p className="text-sm text-muted-foreground">Track your current journey</p>
+        </div>
+        <Button onClick={fetchActiveTrip} variant="outline" size="sm" className="gap-2">
+          <RefreshCw className="h-4 w-4" /> Refresh
+        </Button>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
