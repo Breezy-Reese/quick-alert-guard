@@ -19,6 +19,8 @@ import incidentRoutes from './routes/incident.routes';
 import adminRoutes from './routes/admin.routes';
 import ambulanceRoutes from './routes/ambulance.routes';
 import driverRoutes from './routes/driver.routes';
+import emergencyRoutes from './routes/emergency.routes';
+
 const app: Express = express();
 
 // Security middleware
@@ -73,6 +75,8 @@ app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ambulances', ambulanceRoutes);
 app.use('/api/driver', driverRoutes);
+app.use('/api/emergency', emergencyRoutes);
+
 // 404 handler
 app.use(notFound);
 

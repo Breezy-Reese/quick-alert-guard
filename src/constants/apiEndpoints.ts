@@ -32,6 +32,12 @@ export const API_ENDPOINTS = {
   TRIP_START: '/driver/trips/start',
   TRIP_END: (id: string) => `/driver/trips/${id}/end`,
 
+  // Emergency
+  EMERGENCY_TRIGGER: '/emergency/trigger',
+  EMERGENCY_CANCEL: (id: string) => `/emergency/${id}/cancel`,
+  EMERGENCY_ALERTS: '/emergency/alerts',
+  EMERGENCY_ALERT_BY_ID: (id: string) => `/emergency/${id}`,
+
   // Incidents
   INCIDENTS: '/incidents',
   ACTIVE_INCIDENTS: '/incidents/active',
